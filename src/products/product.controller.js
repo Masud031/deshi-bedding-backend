@@ -27,46 +27,98 @@ const createNewProduct = async (req, res) => {
     }
 }
 // get all products//
-
+// The single, comprehensive function for all fetching, filtering, and searching
 const getAllProducts = async (req, res) => {
     try {
-        const {category, color, minPrice, maxPrice, page=1, limit=10} = req.query;
-        const filter = {};
-        if(category && category !== 'all') {
-            filter.category = category;
+        // 1. **CRITICAL FIX: Get all parameters**
+        const { category, color, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
+        
+        // **CRITICAL FIX: Determine the actual search term from the request**
+        // This handles both req.query.search (from one RTK Query hook) 
+        // AND req.query.query (from the other RTK Query hook /search route)
+        const searchTerm = req.query.search || req.query.query; 
+        console.log("Backend received searchTerm:", searchTerm); 
+
+        let finalFilter = {};
+        const conditions = []; // Array to hold individual filtering/search conditions
+
+        // --- Build individual conditions ---
+
+// product.controller.js (Inside getAllProducts/searchProductsController)
+
+// product.controller.js (Inside getAllProducts/searchProductsController)
+
+if (searchTerm) {
+    // 1. Properly escape the search term to treat special characters literally
+    const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // 2. 💡 CRITICAL FIX: The MongoDB standard string format.
+    //    We explicitly add the '.*' wildcards for substring matching.
+    const regexPatternString = `.*${escapedSearchTerm}.*`;
+    
+    conditions.push({
+        $or: [
+            // Use the $regex operator with a string, and $options for 'i'
+            { name: { $regex: regexPatternString, $options: "i" } },
+            { category: { $regex: regexPatternString, $options: "i" } },
+            { description: { $regex: regexPatternString, $options: "i" } },
+            { color: { $regex: regexPatternString, $options: "i" } },
+        ]
+    });
+}
+
+
+
+        // 2. Category Condition
+        if (category && category !== 'all') {
+            conditions.push({ category: category });
         }
-        if(color && color !== 'all') {
-            filter.color = color;
+        
+        // 3. Color Condition
+        if (color && color !== 'all') {
+            conditions.push({ color: color });
         }
-        if(minPrice && maxPrice) {
-            const min = parseFloat(minPrice);
-            const max = parseFloat(maxPrice);
-            if(!isNaN(min) && !isNaN(max)) {
-                filter.price = {$gte: min, $lte: max}
-            }
+        
+        // 4. Price Condition
+        if (minPrice || maxPrice) {
+            const priceCondition = {};
+            if (minPrice) priceCondition.$gte = Number(minPrice);
+            if (maxPrice) priceCondition.$lte = Number(maxPrice);
+            conditions.push({ price: priceCondition });
         }
 
-        const skip = (parseInt(page) - 1) * parseInt(limit);
-        const totalProducts =  await Products.countDocuments(filter);
-        const totalPages = Math.ceil(totalProducts / parseInt(limit))
+        // --- Combine Conditions ---
+        if (conditions.length > 0) {
+            finalFilter = { $and: conditions };
+        } else {
+            finalFilter = {}; 
+        }
+        
 
+        // --- Execute Query ---
+        const skip = (Number(page) - 1) * Number(limit);
+        const totalProducts = await Products.countDocuments(finalFilter);
+        const totalPages = Math.ceil(totalProducts / Number(limit));
 
-        const products = await Products.find(filter)
-        .skip(skip)
-        .limit(parseInt(limit))
-        .populate('author', 'email username')
-        .sort({createdAt: -1})
-        ;
+        const products = await Products.find(finalFilter)
+            .skip(skip)
+            .limit(Number(limit))
+           
 
-        return successResponse(res, 200, "Products fetched successfully", data={
+        return successResponse(res, 200, "Products fetched successfully", {
             products,
             totalProducts,
-            totalPages
-        })
+            totalPages,
+        });
     } catch (error) {
+        console.error("Mongoose Query Error:", error); 
         return errorResponse(res, 500, "Failed to get products", error);
     }
-}
+};
+
+
+
+
 
 // getting single product//
 const  getSingelProducts = async (req, res) => {
@@ -182,7 +234,7 @@ const trendingProducts = async (req, res) => {
 
 module.exports = {
     createNewProduct,
-    getAllProducts,
+    getAllProducts ,
     getSingelProducts,
     updateProductById,
     deleteProductById,
@@ -191,25 +243,7 @@ module.exports = {
  
 }
 
-// app .patch('api/order/:id') async(req,res)=>{
-//     console.log(req.params);
-//     const orderId=req.params.id;
-//     try{
-//         const result= await Customer .findOneAndUpdate(
-//             {'order._id':orderId},
-//             {$set:{'orders.$':req.body}},
-//             {new:true}
-//         )
-//         console.log(result);
-// if(result){
-//     res.json(result)
-// }else{
-//     res.status(4o4).json({erro:'somthinng went wrong'})
-// }
-//     catch(e)
 
-//     }
 
-// }
 
 
