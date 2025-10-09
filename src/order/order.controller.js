@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 const Order = require("./order.model");
+const User = require("../user/user.model");
 const { errorResponse, successResponse } = require("../user/responsHandler");
 
 const createOrder = async (req, res) => {
@@ -214,6 +215,45 @@ const deleteOrderById = async (req, res) => {
     return errorResponse(res, 500, "Failed to delete order", error)
   }
 }
+const getOrdersByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const orders = await Order.find({ userId }).sort({ createdAt: -1 });
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ success: false, message: "No orders found for this user." });
+    }
+
+    return res.status(200).json({ success: true, data: orders });
+  } catch (error) {
+    console.error("Error fetching orders by user ID:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch orders", error: error.message });
+  }
+};
+// user payment //
+const userPayment = async (req, res) => {
+  try {
+    const { email } = req.params;
+    console.log("➡️ Received email:", email);
+
+    const user = await User.findOne({ email });
+    console.log("👤 Found user:", user);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const orders = await Order.find({ userId: user._id });
+    console.log("📦 Found orders:", orders);
+
+    res.status(200).json({ data: orders });
+  } catch (error) {
+    console.error("❌ Failed to fetch user orders:", error);
+    res.status(500).json({ message: "Failed to fetch user orders", error: error.message });
+  }
+};
+
+
 
 const getAdminStats = async (req, res) => {
   try {
@@ -259,5 +299,7 @@ module.exports = {
   createOrder,
   orderSuccess,
   getOrderSuccess,
-  getAdminStats
+  getAdminStats,
+   getOrdersByUserId,
+   userPayment
 };

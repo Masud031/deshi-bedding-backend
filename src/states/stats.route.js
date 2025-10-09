@@ -1,10 +1,7 @@
 const express = require('express');
-// const { errorResponse, successResponse } = require('../utilis/responseHandler');
 const User = require('../../src/user/user.model');
-// const Order = require('../../src/user/user.model');
 const Reviews = require('../../src/reviews/reviews.model');
 const Products = require('../../src/products/product.model');
-// const { errorResponse, successResponse } = require('../user/responsHandler');
 const Order = require('../order/order.model');
 const { successResponse, errorResponse } = require('../user/responsHandler');
 const router = express.Router();
@@ -16,29 +13,35 @@ router.get("/user-stats/:email", async(req, res) => {
         return errorResponse(res, 400, "Email is required")
     }
      try {
-        const user = await User.findOne({email: email});
+        const user = await User.findOne({ email});
         if(!user) {
             return errorResponse(res, 404, "User not found")
         }
 
         // total payments
-        const totalPaymentsResult =  await Order.aggregate([
-            {$match: {email: email} },
-            {$group: {_id: null, totalAmount: {$sum:"$amount" }}}
-        ])
+        // total payments
+    const totalPaymentsResult = await Order.aggregate([
+      { $match: { userId: user._id } },
+      { $group: { _id: null, totalAmount: { $sum: "$totalPrice" } } },
+    ]);
 
         const totalPaymentsAmount =  totalPaymentsResult.length > 0 ? totalPaymentsResult[0].totalAmount : 0
 
         // total reviews
         const totalReviews =  await Reviews.countDocuments({userId: user._id})
         
-        const  purchasedProductsIds = await Order.distinct("products.productId", {email: email});
+        const  purchasedProductsIds = await Order.distinct("products.productId", { userId: user._id});
        const totalPurchadedProducts = purchasedProductsIds.length;
+
+         // Get Purchase Details (from Order collection)
+   const purchaseInfo = await Order.find({ userId: user._id })
+      .select("orderId totalPrice paymentMethod status createdAt products");
 
        return successResponse(res, 200, "Fetched User stats successfully", {
         totalPayments: parseFloat(totalPaymentsAmount.toFixed(2)),
         totalReviews,
-        totalPurchadedProducts
+        totalPurchadedProducts,
+         purchaseInfo, 
        })
 
 

@@ -9,10 +9,11 @@ router.post('/register',userRegistration);
 
 router.post('/login',userLoggedIn);
 
-router.post('/google-login', googleLoggedIn);
+// router.post('/google-login', googleLoggedIn);
+router.post("/google-login", googleLoggedIn);
+
 
 router.post('/logout',userLogout);
-
 
 //get all users, very token and admin
 router.get('/users',verifyToken ,verifyAdmin, getAllUsers);

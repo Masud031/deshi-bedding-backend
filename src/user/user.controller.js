@@ -92,69 +92,23 @@ const userLoggedIn = async (req, res) => {
 };
 
 
-
-//google login
-// const googleLoggedIn = async (req, res) => {
-//   try {
-//     const { uid, name, email, photoURL } = req.body;
-
-//     let user = await User.findOne({ email });
-
-//     if (!user) {
-//         // Create a new user if they don't exist
-//         user = new User({
-//             uid,
-//             username: name, // Use the name as username
-//             email,
-//             photoURL,
-//             role: "user", // Assign default role
-//             provider: "google",
-//         });
-
-//         await user.save();
-//     }
-
-//     // Generate JWT token
-//     const token = await generateToken(user._id);
-
-//     // Set the token in a cookie
-//     res.cookie("token", token, {
-//       httpOnly: true,
-//       secure: true,  // Ensure HTTPS in production
-//       sameSite: "None",
-//     });
-
-//     res.status(200).json({ 
-//       message: "Logged in successfully!", 
-//       token, 
-//       user: {
-//         _id: user._id,
-//         username: user.username,
-//         email: user.email,
-//         photoURL: user.photoURL,
-//         role: user.role,
-//       }
-//     });
-
-//   } catch (error) {
-//     res.status(500).json({ message: "Google login failed", error });
-//   }
-// };
-
 // google logged-in//
 const jwt = require("jsonwebtoken");
 
 const googleLoggedIn = async (req, res) => {
-  console.log("✅ Google login route hit");
+ console.log("📩 Incoming request:", req.method, req.originalUrl);
+  console.log("📦 Parsed body after express.json():", req.body);
+  
   const { username, email, provider, profileImage } = req.body;
   console.log("Google Login Body:", req.body);
   try {
-    let user = await User.findOne({ email });
+      const normalizedEmail = email?.toLowerCase().trim();
+    let user = await User.findOne({ email: normalizedEmail});
 
     if (!user) {
       user = new User({
-        username: `${username}-${Date.now()}`,
-        email,
+         username: username || `GoogleUser-${Date.now()}`,
+         email: normalizedEmail,
         password: "google-auth",
         provider: provider || "google",
         profileImage, // Google image comes here
@@ -166,6 +120,10 @@ const googleLoggedIn = async (req, res) => {
         user.profileImage = profileImage;
         await user.save();
       }
+    }
+
+     if (!email) {
+      return res.status(400).json({ message: "Email is required" });
     }
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET_KEY, {
@@ -291,6 +249,8 @@ const editUserProfile = async (req, res) => {
   }
 };
 
+
+
 module.exports = {
   userRegistration,
   userLoggedIn,
@@ -299,7 +259,8 @@ module.exports = {
   deleteUser,
   updateUserRole,
   editUserProfile,
-  googleLoggedIn
+  googleLoggedIn,
+  
  
 };
 
