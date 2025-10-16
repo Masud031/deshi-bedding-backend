@@ -220,9 +220,9 @@ const getOrdersByUserId = async (req, res) => {
     const { userId } = req.params;
     const orders = await Order.find({ userId }).sort({ createdAt: -1 });
 
-    if (!orders || orders.length === 0) {
-      return res.status(404).json({ success: false, message: "No orders found for this user." });
-    }
+    // if (!orders || orders.length === 0) {
+    //   return res.status(404).json({ success: false, message: "No orders found for this user." });
+    // }
 
     return res.status(200).json({ success: true, data: orders });
   } catch (error) {
@@ -233,15 +233,15 @@ const getOrdersByUserId = async (req, res) => {
 // user payment //
 const userPayment = async (req, res) => {
   try {
-    const { email } = req.params;
-    console.log("➡️ Received email:", email);
+    const { id } = req.params;
+    console.log("➡️ Received email:", id);
 
-    const user = await User.findOne({ email });
+     const user = await User.findById(id);
     console.log("👤 Found user:", user);
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    // if (!user) {
+    //   return res.status(404).json({ message: "User not found" });
+    // }
 
     const orders = await Order.find({ userId: user._id });
     console.log("📦 Found orders:", orders);

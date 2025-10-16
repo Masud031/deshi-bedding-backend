@@ -3,14 +3,31 @@ const bcrypt = require('bcrypt');
 
 const userSchema = new Schema({
   username: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
+  //  mobile: { type: String, required:true,unique:true },
+   email: {
+    type: String,
+    unique: true,
+    sparse: true, // prevents unique index errors when missing
+    required: function () {
+      return !this.mobile; // required only if no mobile
+    },
+  },
+  // ✅ Make mobile optional if email exists
+  mobile: {
+    type: String,
+    unique: true,
+    sparse: true,
+    required: function () {
+      return !this.email; // required only if no email
+    },
+  },
   password: {
     type: String,
     required: function () {
       return this.provider !== "google"; // Password is required only if not using Google
     },
   },
-  // provider: { type: String, required: true, default: "email" }, // Add provider field
+
   provider: { type: String, default: "custom" }, // Add provider field
   profileImage: { type: String, default: "" },
   bio: { type: String, maxLength: 200 },

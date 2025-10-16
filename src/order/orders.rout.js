@@ -11,7 +11,7 @@ router.get("/order/success", getOrderSuccess);
 router.get('/order/:id', getOrdersByOrderId);
 
 // get order by email
-router.get("/user/email/:email", userPayment);
+router.get("/user/email/:id", userPayment);
 // get order by userID
 router.get("/user/id/:userId", getOrdersByUserId);
 

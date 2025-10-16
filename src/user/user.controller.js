@@ -5,20 +5,25 @@ const { successResponse, errorResponse } = require("./responsHandler");
 
 // User registration
 const userRegistration = async (req, res) => {
-  console.log("Received Data:", req.body); 
+
   try {
-    const { username, email, password, provider, profileImage } = req.body;
-    if (!email) {
-      return res.status(400).send({ message: "Email is required!" });
+    const { username, email,mobile, password, provider, profileImage } = req.body;
+    if (!email && !mobile) {
+      return res.status(400).send({ message: "Email or mobile number is required" });
     }
 
-    let user = await User.findOne({ email });
-    if (user) {
-      return res.status(409).send({ message: "User already exists!", user });
+     // Check if user exists by email or mobile
+    let existingUser;
+      if (email) existingUser = await User.findOne({ email });
+    if (!existingUser && mobile) existingUser = await User.findOne({ mobile });
+
+    if (existingUser) {
+      return res.status(409).json({ message: "User already exists!" });
     }
 
+        let user;
+    // ✅ Google registration
     if (provider === "google") {
-      // Use Google provided username and profile image
       user = new User({
         username,  // Use the provided Google username
         email,
@@ -26,12 +31,24 @@ const userRegistration = async (req, res) => {
         provider,
         profileImage: profileImage || "https://i.ibb.co/2kR9YxW/avatar.png", // Fallback to default image if none provided
       });
-    } else {
-      // For non-Google registration
+    }
+
+     // ✅ Mobile registration
+    else if (mobile && !email) {
+      user = new User({
+        username,
+        mobile,
+        password,
+      });
+    }
+
+    // ✅ Normal email/password registration
+    else {
       user = new User({
         username,
         email,
         password,
+        profileImage: profileImage || "https://i.ibb.co/2kR9YxW/avatar.png",
       });
     }
 
@@ -52,52 +69,65 @@ const userRegistration = async (req, res) => {
 // User login
 const userLoggedIn = async (req, res) => {
   try {
-    const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).send({ message: "User not found!" });
+    const { email, mobile,password} = req.body;
+   console.log("📥 Login request body:", { email, mobile, password });
+   
+     let query = { provider: "custom" };
+
+    if (email) query.email = email;
+    else if (mobile) query.mobile = mobile;
+    else return res.status(400).json({ message: "Email or mobile number is required" });
+
+    const user = await User.findOne(query);
+
+     if (!user) {
+      console.log("❌ No matching user found for:", { email, mobile });
+      return res.status(404).json({ message: "User not found or not allowed to login with password!" });
     }
 
-    // Ensure the User model has a `comparePassword` method implemented
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).send({ message: "Invalid Password!" });
-    }
+ 
 
+    // Generate JWT token
     const token = await generateToken(user._id);
+
+    // Set token in cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: true,
       sameSite: "None",
     });
 
-    res.status(200).send({
+
+    // Send response
+    return res.status(200).json({
       message: "Logged in successfully!",
       token,
       user: {
         _id: user._id,
         username: user.username,
         email: user.email,
+        mobile: user.mobile,
         role: user.role,
-        profileImage: user.profileImage,
+        profileImage: user.profileImage || "https://i.ibb.co/2kR9YxW/avatar.png",
         bio: user.bio,
         profession: user.profession,
       },
     });
+
   } catch (error) {
-    console.error("Error logging in user: ", error);
-    res.status(500).send({ message: "Login failed!" });
+    console.error("Error logging in user:", error);
+    return res.status(500).json({ message: "Login failed!" });
   }
 };
+
 
 
 // google logged-in//
 const jwt = require("jsonwebtoken");
 
 const googleLoggedIn = async (req, res) => {
- console.log("📩 Incoming request:", req.method, req.originalUrl);
-  console.log("📦 Parsed body after express.json():", req.body);
+
   
   const { username, email, provider, profileImage } = req.body;
   console.log("Google Login Body:", req.body);

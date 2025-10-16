@@ -59,9 +59,9 @@ const getUsersReview = async (req, res) => {
 
         const reviews = await Reviews.find({userId: userId}).sort({createdAt: -1})
 
-        if(reviews.length === 0) {
-            return errorResponse(res, 404, "No reviews found for this user")
-        }
+        // if(reviews.length === 0) {
+        //     return errorResponse(res, 404, "No reviews found for this user")
+        // }
 
         return successResponse(res, 200, "Reviews fetched successfully", reviews)
 

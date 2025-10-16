@@ -7,13 +7,16 @@ const { successResponse, errorResponse } = require('../user/responsHandler');
 const router = express.Router();
 
 // user stats
-router.get("/user-stats/:email", async(req, res) => {
-    const {email} = req.params;
-    if(!email) {
+router.get("/user-stats/:id", async(req, res) => {
+    const {id} = req.params;
+    console.log("Incoming user-stats param:", req.params);
+
+    if(!id) {
         return errorResponse(res, 400, "Email is required")
     }
      try {
-        const user = await User.findOne({ email});
+        // const user = await User.findOne({id});
+        const user = await User.findById(req.params.id);
         if(!user) {
             return errorResponse(res, 404, "User not found")
         }
@@ -43,8 +46,6 @@ router.get("/user-stats/:email", async(req, res) => {
         totalPurchadedProducts,
          purchaseInfo, 
        })
-
-
      } catch (error) {
         return errorResponse(res, 500, "Couldn't get user stats", error)
      }
