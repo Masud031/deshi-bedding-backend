@@ -50,14 +50,15 @@ const postAReview = async (req, res) => {
 
 // Get user-specific reviews
 const getUsersReview = async (req, res) => {
-    const {userId} = req.params;
+    const {id} = req.params;
 
     try {
-        if (!userId) {
-            return errorResponse(res, 400, "Missing user ID")
-        }
+        // if (!userId) {
+        //     return errorResponse(res, 400, "Missing user ID")
+        // }
 
-        const reviews = await Reviews.find({userId: userId}).sort({createdAt: -1})
+        // const reviews = await Reviews.find({userId: userId}).sort({createdAt: -1})
+        const reviews = await Reviews.findById(id)
 
         // if(reviews.length === 0) {
         //     return errorResponse(res, 404, "No reviews found for this user")

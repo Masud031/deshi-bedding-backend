@@ -1,7 +1,17 @@
-const generateToken = require("../middlewere/generatetoken");
+
 const User = require("../user/user.model");
-const JWT_SECRET = process.env.JWT_SECRET_KEY;
+const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
+const jwt = require("jsonwebtoken");
 const { successResponse, errorResponse } = require("./responsHandler");
+const generateToken = require("../middlewere/generatetoken");
+const crypto = require('crypto');
+const getGravatarUrl = (email) => {
+  if (!email) return "https://i.ibb.co/2kR9YxW/avatar.png";
+  const normalizedEmail = email.trim().toLowerCase();
+  const hash = crypto.createHash("md5").update(normalizedEmail).digest("hex");
+  return `https://www.gravatar.com/avatar/${hash}?s=200&d=identicon`;
+};
+
 
 // User registration
 const userRegistration = async (req, res) => {
@@ -52,8 +62,32 @@ const userRegistration = async (req, res) => {
       });
     }
 
-    await user.save();
-    res.status(200).send({ message: "Registration successful!" });
+     await user.save();
+
+      // ✅ Generate JWT token right after registration
+    // ✅ Generate JWT
+    const token = generateToken(user._id);
+        // Optionally send token in cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+
+       res.status(201).json({
+      message: "Registration successful",
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        mobile: user.mobile,
+        profileImage: user.profileImage,
+        role: user.role,
+      },
+      token, // ✅ send token to frontend
+    });
   } catch (error) {
     if (error.name === "ValidationError") {
       return res.status(400).send({ message: "Validation Error", error: error.message });
@@ -69,37 +103,79 @@ const userRegistration = async (req, res) => {
 // User login
 const userLoggedIn = async (req, res) => {
   try {
+    const { email, mobile, password } = req.body;
+    console.log("📥 Login request body:", { email, mobile, password });
 
-    const { email, mobile,password} = req.body;
-   console.log("📥 Login request body:", { email, mobile, password });
-   
-     let query = { provider: "custom" };
+    let query = { provider: "custom" };
 
     if (email) query.email = email;
     else if (mobile) query.mobile = mobile;
-    else return res.status(400).json({ message: "Email or mobile number is required" });
+    else
+      return res
+        .status(400)
+        .json({ message: "Email or mobile number is required" });
 
     const user = await User.findOne(query);
 
-     if (!user) {
+    if (!user) {
       console.log("❌ No matching user found for:", { email, mobile });
-      return res.status(404).json({ message: "User not found or not allowed to login with password!" });
+      return res.status(404).json({
+        message: "User not found or not allowed to login with password!",
+      });
+    }
+      // ✅ Check password using model method
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      console.log("❌ Invalid password for:", user.email);
+      return res.status(401).json({ message: "Invalid password!" });
     }
 
- 
+    // ✅ Auto-assign Google profile image for Gmail users without profileImage
 
-    // Generate JWT token
+  const isDefaultAvatar = (url) =>
+   !url ||
+  url.trim() === "" ||
+  url.includes("i.ibb.co/2kR9YxW/avatar.png") ||
+//   url === "https://lh3.googleusercontent.com/a-/AOh14Gmasudwebdeveloper03=s96-c" || // Old broken URL
+  url.includes("https://googleusercontent.com/profile/picture/"); // Include the known bad URL
+
+// Variable to track if a save operation is necessary
+let shouldSave = false;
+
+// 1. Logic to set Gravatar/Google Photo if current image is default/invalid
+if (isDefaultAvatar(user.profileImage) && user.email) {
+
+    // Set the new, valid profile image URL
+   user.profileImage = getGravatarUrl(user.email);
+    
+    // Check if a new image was set and mark for save
+    if (user.profileImage) {
+        console.log("🖼️ Assigned new profileImage:", user.profileImage);
+        shouldSave = true;
+    }
+}
+
+if (shouldSave) {
+    try {
+        await user.save();
+        console.log("✅ Profile Image updated and saved successfully.");
+    } catch (e) {
+        console.error("❌ ERROR: Failed to save user profile image update:", e);
+    }
+}
+
+
+    // ✅ Generate JWT token
     const token = await generateToken(user._id);
 
-    // Set token in cookie
+    // ✅ Set token in cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: true,
       sameSite: "None",
     });
 
-
-    // Send response
+    // ✅ Send response
     return res.status(200).json({
       message: "Logged in successfully!",
       token,
@@ -109,12 +185,11 @@ const userLoggedIn = async (req, res) => {
         email: user.email,
         mobile: user.mobile,
         role: user.role,
-        profileImage: user.profileImage || "https://i.ibb.co/2kR9YxW/avatar.png",
+        profileImage: user.profileImage,
         bio: user.bio,
         profession: user.profession,
       },
     });
-
   } catch (error) {
     console.error("Error logging in user:", error);
     return res.status(500).json({ message: "Login failed!" });
@@ -123,8 +198,9 @@ const userLoggedIn = async (req, res) => {
 
 
 
+
 // google logged-in//
-const jwt = require("jsonwebtoken");
+
 
 const googleLoggedIn = async (req, res) => {
 

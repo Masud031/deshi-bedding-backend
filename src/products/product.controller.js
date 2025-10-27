@@ -2,11 +2,45 @@ const Reviews = require("../reviews/reviews.model");
 const { errorResponse, successResponse } = require("../user/responsHandler");
 const Products = require("./product.model");
 
+const generateProductCode = () => {
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  return `PRD-${randomNum}`;
+};
+// ✅ Helper function to ensure unique product code
+const generateUniqueProductCode = async () => {
+  let uniqueCode = generateProductCode();
+  let exists = await Products.findOne({ productCode: uniqueCode });
+
+  // Keep generating until a unique one is found
+  while (exists) {
+    uniqueCode = generateProductCode();
+    exists = await Products.findOne({ productCode: uniqueCode });
+  }
+
+  return uniqueCode;
+};
+
 
 const createNewProduct = async (req, res) => {
     try {
+      let { productCode } = req.body;
+
+    // ✅ Auto-generate and ensure uniqueness if not provided
+    if (!productCode || productCode.trim() === "") {
+      productCode = await generateUniqueProductCode();
+    } else {
+      // Even if user provides one, check if it already exists
+      const existingProduct = await Products.findOne({ productCode });
+      if (existingProduct) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Product code already exists. Please use a different one." });
+      }
+    }
+
         const newProduct =  new Products({
-            ...req.body
+            ...req.body,
+              productCode,
         })
 
         const savedProduct =  await newProduct.save();
@@ -42,9 +76,7 @@ const getAllProducts = async (req, res) => {
         let finalFilter = {};
         const conditions = []; // Array to hold individual filtering/search conditions
 
-        // --- Build individual conditions ---
-
-// product.controller.js (Inside getAllProducts/searchProductsController)
+        // --- Build individual conditions --
 
 // product.controller.js (Inside getAllProducts/searchProductsController)
 
@@ -63,6 +95,7 @@ if (searchTerm) {
             { category: { $regex: regexPatternString, $options: "i" } },
             { description: { $regex: regexPatternString, $options: "i" } },
             { color: { $regex: regexPatternString, $options: "i" } },
+             { productCode: { $regex: regexPatternString, $options: "i" } },
         ]
     });
 }
@@ -115,6 +148,8 @@ if (searchTerm) {
         return errorResponse(res, 500, "Failed to get products", error);
     }
 };
+
+
 
 
 
@@ -229,6 +264,141 @@ const trendingProducts = async (req, res) => {
      res.status(500).json({ message: "Failed to fetch trending products", error })
   }
 };
+// filtering product//
+
+
+
+
+
+
+// ✅ Get filters for all products OR for specific category
+// product.controller.js
+const getAllFilters = async (req, res) => {
+  try {
+    const categoryParam = req.params.category;
+
+    const query = {};
+    if (categoryParam && categoryParam.toLowerCase() !== "all") {
+      query.category = { $regex: new RegExp(categoryParam, "i") };
+    }
+
+    // Fetch all relevant product fields
+    const products = await Products.find(query, "category color price stock style");
+
+    // ✅ Categories
+    const categories = [...new Set(products.map(p => p.category?.toLowerCase()).filter(Boolean))];
+
+    // ✅ Colors
+    const colors = [...new Set(products.map(p => p.color?.toLowerCase()).filter(Boolean))];
+
+    // ✅ Sizes
+    const sizesSet = new Set();
+    products.forEach(p => {
+      let stockObj = p.stock;
+      if (stockObj instanceof Map) {
+        stockObj = Object.fromEntries(stockObj);
+      } else if (typeof stockObj?.toObject === "function") {
+        stockObj = stockObj.toObject();
+      }
+      if (stockObj && typeof stockObj === "object") {
+        Object.keys(stockObj).forEach(size => sizesSet.add(size));
+      }
+    });
+    const sizes = [...sizesSet];
+
+    // ✅ Styles
+    const styles = [...new Set(products.map(p => p.style?.toLowerCase()).filter(Boolean))];
+
+    // ✅ Price ranges
+    const priceRanges = [
+      { label: "Under 50", min: 0, max: 50 },
+      { label: "50 - 100", min: 50, max: 100 },
+      { label: "100 - 200", min: 100, max: 200 },
+      { label: "200 and above", min: 200, max: null },
+    ];
+
+    res.status(200).json({
+      success: true,
+      message: "Filters fetched successfully",
+      data: { categories, sizes, colors, styles, priceRanges },
+    });
+  } catch (err) {
+    console.error("getAllFilters error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch filters" });
+  }
+};
+
+// ✅ product.controller.js
+const getAllFilterProducts = async (req, res) => {
+  try {
+    const {
+      category,
+      color,
+      size,
+      style,
+      priceMin,
+      priceMax,
+      page = 1,
+      limit = 8,
+    } = req.query;
+
+    const query = {};
+
+    // ✅ Filter by category (case-insensitive)
+    if (category && category.toLowerCase() !== "all") {
+      query.category = { $regex: new RegExp(category, "i") };
+    }
+
+    // ✅ Filter by color
+    if (color) {
+      const colors = Array.isArray(color) ? color : [color];
+      query.color = { $in: colors.map((c) => new RegExp(c, "i")) };
+    }
+
+    // ✅ Filter by style
+    if (style) {
+      const styles = Array.isArray(style) ? style : [style];
+      query.style = { $in: styles.map((s) => new RegExp(s, "i")) };
+    }
+
+    // ✅ Filter by size (within stock keys)
+    if (size) {
+      const sizes = Array.isArray(size) ? size : [size];
+      query[`stock.${sizes[0]}`] = { $gt: 0 }; // check available quantity
+    }
+
+    // ✅ Filter by price range
+    if (priceMin || priceMax) {
+      query.price = {};
+      if (priceMin) query.price.$gte = parseFloat(priceMin);
+      if (priceMax) query.price.$lte = parseFloat(priceMax);
+    }
+
+    // ✅ Pagination
+    const skip = (page - 1) * limit;
+
+    const products = await Products.find(query)
+      .skip(skip)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
+
+    const total = await Products.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: products,
+      total,
+      currentPage: Number(page),
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (err) {
+    console.error("getAllFilterProducts error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch filtered products" });
+  }
+};
+
+
+
 
 
 
@@ -239,7 +409,9 @@ module.exports = {
     updateProductById,
     deleteProductById,
     reduceStock,
-    trendingProducts
+    trendingProducts,
+    getAllFilters,
+    getAllFilterProducts
  
 }
 

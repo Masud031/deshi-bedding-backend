@@ -1,5 +1,5 @@
 const express =  require('express');
-const { createNewProduct, getAllProducts, getSingelProducts, updateProductById,  deleteProductById, reduceStock, trendingProducts} = require('./product.controller');
+const { createNewProduct, getAllProducts, getSingelProducts, updateProductById,  deleteProductById, reduceStock, trendingProducts, getAllFilters, getAllquaryProducts, getAllFilterProducts} = require('./product.controller');
 const verifyToken = require('../middlewere/verifytoken');
 const verifyAdmin = require('../middlewere/verifyadmin');
 
@@ -7,23 +7,34 @@ const verifyAdmin = require('../middlewere/verifyadmin');
 // const exports = require;
 const router= express.Router();
 
-// creat product (only admin);
-router.post('/create-product',verifyToken ,verifyAdmin, createNewProduct,);
 
-router.get('/search', getAllProducts);
-router.get('/',getAllProducts);
-//for trending fetching 
-router.get("/trending", trendingProducts)
-// get singel products .
-router.get('/:id',getSingelProducts);
+// ✅ Filtering route (must be before "/:id")
+router.get("/filters/:category?", getAllFilters);
+router.get("/filter", getAllFilterProducts);
 
-// update product (admin only)
-router.patch("/update-product/:id",verifyToken, verifyAdmin, updateProductById)
-// Delete product//
-router.delete("/:id",verifyToken, verifyAdmin, deleteProductById)
+
+// ✅ Product search & all products
+router.get("/search", getAllProducts);
+router.get("/", getAllProducts);
+
+// ✅ Trending products
+router.get("/trending", trendingProducts);
+
+// ✅ Single product (keep last)
+router.get("/:id", getSingelProducts);
+
+// ✅ Create product (admin only)
+router.post("/create-product", verifyToken, verifyAdmin, createNewProduct);
+
+// ✅ Update product (admin only)
+router.patch("/update-products/:id", verifyToken, verifyAdmin, updateProductById);
+
+// ✅ Delete product (admin only)
+router.delete("/:id", verifyToken, verifyAdmin, deleteProductById);
 
 // ✅ Reduce stock after order
 router.patch("/reduce-stock/:id", reduceStock);
+
 
 
 

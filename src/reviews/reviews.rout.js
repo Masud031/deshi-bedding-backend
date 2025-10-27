@@ -10,6 +10,6 @@ router.post("/post-review",verifyToken,postAReview);
 router.get("/total-reviews",verifyToken, getTotalReviewsCount )
 
 // get review data for user
-router.get("/:userId",verifyToken, getUsersReview);
+router.get("/:id",verifyToken, getUsersReview);
 
 module.exports =router;
