@@ -150,11 +150,6 @@ if (searchTerm) {
 };
 
 
-
-
-
-
-
 // getting single product//
 const  getSingelProducts = async (req, res) => {
     const {id} = req.params;

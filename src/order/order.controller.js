@@ -168,17 +168,53 @@ const getOrdersByOrderId = async (req, res) => {
 const getAllOrders = async (req, res) => {
   try {
     console.log("Received request for all orders");
-    const orders =  await Order.find().sort({createdAt: -1});
-    if(orders.length === 0 || !orders) {
-      return errorResponse(res, 404, "No orders found")
+
+    // Fetch orders and populate user info
+    const orders = await Order.find()
+      .populate({
+        path: "userId",
+        select: "username email mobile", // only include necessary fields
+      })
+      .sort({ createdAt: -1 });
+
+    if (!orders || orders.length === 0) {
+      return errorResponse(res, 404, "No orders found");
     }
 
     console.log("Orders found:", orders.length);
-    return successResponse(res, 200, "Orders fetched successfully", orders)
+
+    // Flatten populated user data for frontend use
+    const formattedOrders = orders.map((order) => ({
+      _id: order._id,
+      orderId: order.orderId,
+      fullName: order.fullName,
+      address: order.address,
+      district: order.district,
+      zipCode: order.zipCode,
+      phone: order.phone,
+      totalPrice: order.totalPrice,
+      paymentMethod: order.paymentMethod,
+      products: order.products,
+      status: order.status,
+      transactionId: order.transactionId,
+      deliveryMethod: order.deliveryMethod,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+
+      // Flatten user info
+      userId: order.userId?._id || null,
+      userName: order.userId?.username || "N/A",
+      email: order.userId?.email || "N/A",
+      mobile: order.userId?.mobile || "N/A",
+    }));
+
+    return successResponse(res, 200, "Orders fetched successfully", formattedOrders);
   } catch (error) {
-    return errorResponse(res, 500, "Failed to get all orders", error)
+    console.error("Error fetching all orders:", error);
+    return errorResponse(res, 500, "Failed to get all orders", error);
   }
-}
+};
+
 
 
 const updateOrderStatus = async (req, res) => {
