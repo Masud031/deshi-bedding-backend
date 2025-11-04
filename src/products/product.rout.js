@@ -12,7 +12,6 @@ const router= express.Router();
 router.get("/filters/:category?", getAllFilters);
 router.get("/filter", getAllFilterProducts);
 
-
 // ✅ Product search & all products
 router.get("/search", getAllProducts);
 router.get("/", getAllProducts);
@@ -34,8 +33,5 @@ router.delete("/:id", verifyToken, verifyAdmin, deleteProductById);
 
 // ✅ Reduce stock after order
 router.patch("/reduce-stock/:id", reduceStock);
-
-
-
 
 module.exports = router;

@@ -1,4 +1,4 @@
-const { successResponse, errorResponse } = require("../user/responsHandler");
+const { errorResponse } = require("../user/responsHandler");
 const jwt =  require('jsonwebtoken')
 const JWT_SECRET = process.env.JWT_SECRET_KEY;
 

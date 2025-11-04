@@ -38,6 +38,7 @@ const productSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+
       isTrending: { type: Boolean, default: false }
 }, {
     timestamps: true

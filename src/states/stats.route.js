@@ -4,6 +4,7 @@ const Reviews = require('../../src/reviews/reviews.model');
 const Products = require('../../src/products/product.model');
 const Order = require('../order/order.model');
 const { successResponse, errorResponse } = require('../user/responsHandler');
+const { default: mongoose } = require('mongoose');
 const router = express.Router();
 
 // user stats
@@ -113,6 +114,7 @@ router.get('/admin-stats', async (req, res) => {
 
     }
   });
+
 
 
 module.exports = router;

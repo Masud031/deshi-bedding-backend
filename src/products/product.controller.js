@@ -397,6 +397,8 @@ const getAllFilterProducts = async (req, res) => {
 
 
 
+
+
 module.exports = {
     createNewProduct,
     getAllProducts ,
@@ -406,7 +408,8 @@ module.exports = {
     reduceStock,
     trendingProducts,
     getAllFilters,
-    getAllFilterProducts
+    getAllFilterProducts,
+  
  
 }
 
