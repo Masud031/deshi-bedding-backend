@@ -28,6 +28,7 @@ const ReviewsRoutes = require('./src/reviews/reviews.rout');
 const OrdersRoutes = require('./src/order/orders.rout');
 const StatsRoutes = require('./src/states/stats.route');
 const UploadImage = require("./src/utilis/UploadImage"); 
+const bannerRoutes = require("./src/Banner/banner.rout"); 
 
 
 
@@ -44,6 +45,7 @@ async function main() {
     app.use('/api/reviews', ReviewsRoutes);
     app.use('/api/order', OrdersRoutes);
     app.use('/api/stats', StatsRoutes);
+    app.use('/api/banner', bannerRoutes);
   
 
 

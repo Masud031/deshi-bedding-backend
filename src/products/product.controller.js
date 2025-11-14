@@ -274,11 +274,21 @@ const getAllFilters = async (req, res) => {
 
     const query = {};
     if (categoryParam && categoryParam.toLowerCase() !== "all") {
-      query.category = { $regex: new RegExp(categoryParam, "i") };
+      // query.category = { $regex: new RegExp(categoryParam, "i") };
+      query.category = { $regex: new RegExp(`^${categoryParam}$`, "i") };
+          //  query.category = { $regex: new RegExp(category, "i") };
     }
 
     // Fetch all relevant product fields
     const products = await Products.find(query, "category color price stock style");
+    
+       if (!products.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No products found for this category",
+        data: { categories: [], sizes: [], colors: [], styles: [], priceRanges: [] },
+      });
+    }
 
     // ✅ Categories
     const categories = [...new Set(products.map(p => p.category?.toLowerCase()).filter(Boolean))];
@@ -289,7 +299,9 @@ const getAllFilters = async (req, res) => {
     // ✅ Sizes
     const sizesSet = new Set();
     products.forEach(p => {
+       
       let stockObj = p.stock;
+
       if (stockObj instanceof Map) {
         stockObj = Object.fromEntries(stockObj);
       } else if (typeof stockObj?.toObject === "function") {
@@ -299,7 +311,31 @@ const getAllFilters = async (req, res) => {
         Object.keys(stockObj).forEach(size => sizesSet.add(size));
       }
     });
-    const sizes = [...sizesSet];
+    let sizes = [...sizesSet];
+     // ✅ Normalize categoryParam for flexible matching
+    const normalizedCategory = 
+    categoryParam?.toLowerCase()?.replace(/\s+/g, "-")?.trim();
+
+    if (normalizedCategory && normalizedCategory !== "all") {
+  query.category = { $regex: new RegExp(`^${normalizedCategory}$`, "i") };
+}
+    
+
+ const categorySizeMap = {
+  "kids-panjabi": [20, 22, 24, 26, 28, 30,32,34,36],
+  "panjabi": [38, 40, 42, 44, 46],
+   "big-size": [46, 48, 50],
+  "womens-kurti": ["S", "M", "L", "XL", "XXL"],
+};
+    // ✅ Apply override if category matches
+for (const [key, value] of Object.entries(categorySizeMap)) {
+  if (normalizedCategory?.includes(key)) {
+    sizes = value;
+    break;
+  }
+}
+
+
 
     // ✅ Styles
     const styles = [...new Set(products.map(p => p.style?.toLowerCase()).filter(Boolean))];
@@ -341,7 +377,8 @@ const getAllFilterProducts = async (req, res) => {
 
     // ✅ Filter by category (case-insensitive)
     if (category && category.toLowerCase() !== "all") {
-      query.category = { $regex: new RegExp(category, "i") };
+      // query.category = { $regex: new RegExp(category, "i") };
+      query.category = { $regex: new RegExp(`^${category}$`, "i") };
     }
 
     // ✅ Filter by color
