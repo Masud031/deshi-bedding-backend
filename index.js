@@ -45,7 +45,7 @@ async function main() {
     app.use('/api/reviews', ReviewsRoutes);
     app.use('/api/order', OrdersRoutes);
     app.use('/api/stats', StatsRoutes);
-    app.use('/api/banner', bannerRoutes);
+    
   
 
 

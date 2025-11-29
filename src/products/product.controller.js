@@ -65,13 +65,13 @@ const createNewProduct = async (req, res) => {
 const getAllProducts = async (req, res) => {
     try {
         // 1. **CRITICAL FIX: Get all parameters**
-        const { category, color, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
+        const { category, color,size, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
         
         // **CRITICAL FIX: Determine the actual search term from the request**
         // This handles both req.query.search (from one RTK Query hook) 
         // AND req.query.query (from the other RTK Query hook /search route)
         const searchTerm = req.query.search || req.query.query; 
-        console.log("Backend received searchTerm:", searchTerm); 
+        
 
         let finalFilter = {};
         const conditions = []; // Array to hold individual filtering/search conditions
@@ -111,6 +111,26 @@ if (searchTerm) {
         if (color && color !== 'all') {
             conditions.push({ color: color });
         }
+
+        // size 
+ if (req.query.size) {
+    let selectedSizes = req.query.size;
+
+    // Multiple sizes (38,40)
+    if (typeof selectedSizes === "string") {
+        selectedSizes = selectedSizes.split(",");
+    }
+
+    if (!Array.isArray(selectedSizes)) {
+        selectedSizes = [selectedSizes];
+    }
+
+    const sizeOrConditions = selectedSizes.map((s) => ({
+        [`stock.${s.trim()}`]: { $exists: true, $gt: 0 }
+    }));
+
+    conditions.push({ $or: sizeOrConditions });
+}
         
         // 4. Price Condition
         if (minPrice || maxPrice) {
@@ -126,6 +146,7 @@ if (searchTerm) {
         } else {
             finalFilter = {}; 
         }
+
         
 
         // --- Execute Query ---
@@ -324,8 +345,12 @@ const getAllFilters = async (req, res) => {
  const categorySizeMap = {
   "kids-panjabi": [20, 22, 24, 26, 28, 30,32,34,36],
   "panjabi": [38, 40, 42, 44, 46],
-   "big-size": [46, 48, 50],
-  "womens-kurti": ["S", "M", "L", "XL", "XXL"],
+  "big-size": [46, 48, 50],
+  "sheroany": [38,40,42,44,46],
+  "payjama": [38,40,42,44],
+  "koti": [36,38,40,42,44,46],
+  "kids-sheroany": [24,26,28,30,32,34,36],
+  "trending": [38,40,42,44,46],
 };
     // ✅ Apply override if category matches
 for (const [key, value] of Object.entries(categorySizeMap)) {
@@ -375,38 +400,91 @@ const getAllFilterProducts = async (req, res) => {
 
     const query = {};
 
-    // ✅ Filter by category (case-insensitive)
-    if (category && category.toLowerCase() !== "all") {
-      // query.category = { $regex: new RegExp(category, "i") };
-      query.category = { $regex: new RegExp(`^${category}$`, "i") };
-    }
+    // CATEGORY
+    // if (category && category.toLowerCase() !== "all") {
+    //   query.category = { $regex: new RegExp(`^${category}$`, "i") };
+    // }
 
-    // ✅ Filter by color
+// SAFE ALTERNATIVE (If the above still fails)
+// if (category && category.toLowerCase() !== "all") {
+//     const normalizedCategory = category.toLowerCase().trim();
+//     query.category = { $regex: new RegExp("^" + normalizedCategory + "$", "i") };
+// }
+
+if (category && category.toLowerCase() !== "all") {
+        const normalizedCategory = category.toLowerCase().trim();
+        // Use the syntax that WORKS in getAllFilters:
+        query.category = { $regex: new RegExp("^" + normalizedCategory + "$", "i") };
+        
+        // If this still fails, use the string concatenation:
+        // query.category = { $regex: new RegExp("^" + normalizedCategory + "$", "i") };
+    }
+console.log("Query received:", req.query);
+console.log("Mongo query:", JSON.stringify(query, null, 2));
+
+    // COLOR (supports array or single)
     if (color) {
       const colors = Array.isArray(color) ? color : [color];
       query.color = { $in: colors.map((c) => new RegExp(c, "i")) };
     }
 
-    // ✅ Filter by style
+    // STYLE (supports array or single)
     if (style) {
       const styles = Array.isArray(style) ? style : [style];
       query.style = { $in: styles.map((s) => new RegExp(s, "i")) };
     }
 
-    // ✅ Filter by size (within stock keys)
-    if (size) {
-      const sizes = Array.isArray(size) ? size : [size];
-      query[`stock.${sizes[0]}`] = { $gt: 0 }; // check available quantity
-    }
+    // SIZE (robust parsing + safe composition)
+// if (size) {
+//   const sizes = typeof size === "string" ? size.split(",") : size;
+//   // Filter products that have stock >0 for ANY of the selected sizes
+//   query.$or = sizes.map((s) => ({
+//     [`stock.${s}`]: { $exists: true, $gt: 0 },
+//   }));
+// }
 
-    // ✅ Filter by price range
+// if (size) {
+//   const sizes = typeof size === "string" ? size.split(",") : size;
+  
+//   query.$or = sizes.map((s) => ({
+//     [`stock.${s}`]: { $exists: true, $gt: 0 }, // ✅ Ensure this uses backticks ` and proper bracket notation []
+//   }));
+// }
+
+// if (size) {
+//   const sizes = typeof size === "string" ? size.split(",") : size;
+  
+//   query.$or = sizes.map((s) => ({
+//     [`stock.${s}`]: { $exists: true, $gt: 0 }, // Checking stock.46 > 0
+//   }));
+// }
+
+  if (size) {
+  const selectedSizes = typeof size === "string" ? [size] : size;
+
+  query.$or = selectedSizes.map((s) => ({
+    [`stock.${s}`]: { $exists: true, $gt: 0 }
+  }));
+}
+
+
+
+
+console.log("Query received:", req.query);
+console.log("Mongo query:", query);
+console.log("Query received:", req.query);
+console.log("Mongo query:", JSON.stringify(query, null, 2));
+
+
+
+    // PRICE
     if (priceMin || priceMax) {
       query.price = {};
       if (priceMin) query.price.$gte = parseFloat(priceMin);
       if (priceMax) query.price.$lte = parseFloat(priceMax);
     }
 
-    // ✅ Pagination
+    // PAGINATION
     const skip = (page - 1) * limit;
 
     const products = await Products.find(query)
@@ -425,17 +503,66 @@ const getAllFilterProducts = async (req, res) => {
     });
   } catch (err) {
     console.error("getAllFilterProducts error:", err);
-    res.status(500).json({ success: false, message: "Failed to fetch filtered products" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch filtered products",
+    });
   }
 };
 
+// only for size selection in shop page //
+// const getAvailableSizes = async (req, res) => {
+//   try {
+//     const products = await Products.find({});
 
+//     // Extract sizes
+//     const sizesSet = new Set();
 
+//     products.forEach((p) => {
+//       let stockObj = p.stock;
 
+//       if (stockObj instanceof Map) {
+//         stockObj = Object.fromEntries(stockObj);
+//       } else if (typeof stockObj?.toObject === "function") {
+//         stockObj = stockObj.toObject();
+//       }
 
+//       if (stockObj && typeof stockObj === "object") {
+//         Object.keys(stockObj).forEach((size) => sizesSet.add(size));
+//       }
+//     });
 
+//     let sizes = [...sizesSet];
 
+//     const categoryParam = req.query.category || "";
+//     const normalizedCategory = categoryParam
+//       .toLowerCase()
+//       .replace(/\s+/g, "-")
+//       .trim();
 
+//     const categorySizeMap = {
+//       "kids-panjabi": [20, 22, 24, 26, 28, 30, 32, 34, 36],
+//       panjabi: [38, 40, 42, 44, 46],
+//       "big-size": [46, 48, 50],
+//       "womens-kurti": ["S", "M", "L", "XL", "XXL"],
+//     };
+
+//     for (const [key, value] of Object.entries(categorySizeMap)) {
+//       if (normalizedCategory.includes(key)) {
+//         sizes = value;
+//         break;
+//       }
+//     }
+
+//     res.json({
+//       sizes,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
+ 
 module.exports = {
     createNewProduct,
     getAllProducts ,
@@ -446,6 +573,8 @@ module.exports = {
     trendingProducts,
     getAllFilters,
     getAllFilterProducts,
+   
+   
   
  
 }
