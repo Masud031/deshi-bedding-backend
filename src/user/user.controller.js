@@ -6,7 +6,7 @@ const { successResponse, errorResponse } = require("./responsHandler");
 const generateToken = require("../middlewere/generatetoken");
 const crypto = require('crypto');
 const getGravatarUrl = (email) => {
-  if (!email) return "https://i.ibb.co/2kR9YxW/avatar.png";
+  if (!email) return "https://i.ibb.co.com/TDFh2J1d/download-2.jpg";
   const normalizedEmail = email.trim().toLowerCase();
   const hash = crypto.createHash("md5").update(normalizedEmail).digest("hex");
   return `https://www.gravatar.com/avatar/${hash}?s=200&d=identicon`;
@@ -39,7 +39,7 @@ const userRegistration = async (req, res) => {
         email,
         password: "google-auth",  // Dummy password for Google login
         provider,
-        profileImage: profileImage || "https://i.ibb.co/2kR9YxW/avatar.png", // Fallback to default image if none provided
+        profileImage: profileImage || "https://i.ibb.co.com/TDFh2J1d/download-2.jpg", // Fallback to default image if none provided
       });
     }
 
@@ -58,7 +58,7 @@ const userRegistration = async (req, res) => {
         username,
         email,
         password,
-        profileImage: profileImage || "https://i.ibb.co/2kR9YxW/avatar.png",
+        profileImage: profileImage || "https://i.ibb.co.com/TDFh2J1d/download-2.jpg",
       });
     }
 
@@ -135,7 +135,7 @@ const userLoggedIn = async (req, res) => {
   const isDefaultAvatar = (url) =>
    !url ||
   url.trim() === "" ||
-  url.includes("i.ibb.co/2kR9YxW/avatar.png") ||
+  url.includes("https://i.ibb.co.com/TDFh2J1d/download-2.jpg") ||
 //   url === "https://lh3.googleusercontent.com/a-/AOh14Gmasudwebdeveloper03=s96-c" || // Old broken URL
   url.includes("https://googleusercontent.com/profile/picture/"); // Include the known bad URL
 

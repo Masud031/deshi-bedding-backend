@@ -74,7 +74,7 @@ const createOrder = async (req, res) => {
 
     // ✅ Create order
     const newOrder = new Order({
-      orderId: `ORD-${Date.now()}`,
+      orderId: `ORD-${Math.floor(10000 + Math.random() * 90000)}`,
       fullName,
       address,
       district,
