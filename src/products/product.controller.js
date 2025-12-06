@@ -96,6 +96,7 @@ if (searchTerm) {
             { description: { $regex: regexPatternString, $options: "i" } },
             { color: { $regex: regexPatternString, $options: "i" } },
              { productCode: { $regex: regexPatternString, $options: "i" } },
+             { orderId: { $regex: regexPatternString, $options: "i" } },
         ]
     });
 }

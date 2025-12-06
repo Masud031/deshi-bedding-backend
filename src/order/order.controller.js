@@ -17,6 +17,7 @@ const createOrder = async (req, res) => {
       totalPrice,
       paymentMethod,
       products,
+      productCode,
       deliveryMethod,
       deliveryStatus,
       paymentStatus,
@@ -24,18 +25,16 @@ const createOrder = async (req, res) => {
     } = req.body;
 
     // ✅ Validate required fields
-    if (
-      !fullName ||
-      !address ||
-      !district ||
-      !zipCode ||
-      !phone ||
-      !totalPrice ||
-      !paymentMethod ||
-      !products
-    ) {
-      return res.status(400).json({ message: "All fields are required." });
-    }
+ if (
+  !fullName?.trim() ||
+  !address?.trim() ||
+  !district?.trim() ||
+  !zipCode?.trim() ||
+  !phone?.trim()||
+  ! productCode
+) {
+  return res.status(400).json({ message: "All fields are required." });
+}
 
     // ✅ Ensure products is an array
     if (!Array.isArray(products)) {
@@ -61,6 +60,7 @@ const createOrder = async (req, res) => {
       }
       return {
        productId: product.productId,
+        productCode: product.productCode,
         quantity: Number(product.quantity),
         size: product.size || "Not Selected",
         name: product.name,
@@ -169,11 +169,14 @@ const getAllOrders = async (req, res) => {
   try {
     console.log("Received request for all orders");
 
-    // Fetch orders and populate user info
     const orders = await Order.find()
       .populate({
         path: "userId",
-        select: "username email mobile", // only include necessary fields
+        select: "username email mobile",
+      })
+      .populate({
+        path: "products.productId",
+        select: "productCode name price image",
       })
       .sort({ createdAt: -1 });
 
@@ -181,32 +184,45 @@ const getAllOrders = async (req, res) => {
       return errorResponse(res, 404, "No orders found");
     }
 
-    console.log("Orders found:", orders.length);
-
-    // Flatten populated user data for frontend use
     const formattedOrders = orders.map((order) => ({
-      _id: order._id,
-      orderId: order.orderId,
-      fullName: order.fullName,
-      address: order.address,
-      district: order.district,
-      zipCode: order.zipCode,
-      phone: order.phone,
-      totalPrice: order.totalPrice,
-      paymentMethod: order.paymentMethod,
-      products: order.products,
-      status: order.status,
-      transactionId: order.transactionId,
-      deliveryMethod: order.deliveryMethod,
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt,
+  _id: order._id,
+  orderId: order.orderId,
+  fullName: order.fullName,
+  address: order.address,
+  district: order.district,
+  zipCode: order.zipCode,
+  phone: order.phone,
+  totalPrice: order.totalPrice,
+  paymentMethod: order.paymentMethod,
+  
+  status: order.status,
+  transactionId: order.transactionId,
+  deliveryMethod: order.deliveryMethod,
+  createdAt: order.createdAt,
+  updatedAt: order.updatedAt,
 
-      // Flatten user info
-      userId: order.userId?._id || null,
-      userName: order.userId?.username || "N/A",
-      email: order.userId?.email || "N/A",
-      mobile: order.userId?.mobile || "N/A",
-    }));
+  // user
+  userId: order.userId?._id || null,
+  userName: order.userId?.username || "N/A",
+  email: order.userId?.email || "N/A",
+  mobile: order.userId?.mobile || "N/A",
+
+  // products (populated)
+  products: order.products.map((p) => ({
+    quantity: p.quantity,
+    price: p.price,
+    productId: p.productId
+      ? {
+          _id: p.productId._id,
+          productCode: p.productId.productCode,
+          name: p.productId.name,
+          price: p.productId.price,
+          image: p.productId.image,
+        }
+      : null,
+  })),
+}));
+
 
     return successResponse(res, 200, "Orders fetched successfully", formattedOrders);
   } catch (error) {
@@ -214,6 +230,7 @@ const getAllOrders = async (req, res) => {
     return errorResponse(res, 500, "Failed to get all orders", error);
   }
 };
+
 
 
 
