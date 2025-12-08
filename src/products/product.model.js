@@ -33,6 +33,10 @@ const productSchema = new mongoose.Schema({
         required: true,
         default: {}
     },
+    styleCategory: {
+    type: String,
+    default: "simple"
+  },
     author: {
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'User',

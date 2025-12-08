@@ -28,7 +28,7 @@ const ReviewsRoutes = require('./src/reviews/reviews.rout');
 const OrdersRoutes = require('./src/order/orders.rout');
 const StatsRoutes = require('./src/states/stats.route');
 const UploadImage = require("./src/utilis/UploadImage"); 
-const bannerRoutes = require("./src/Banner/banner.rout"); 
+
 
 
 

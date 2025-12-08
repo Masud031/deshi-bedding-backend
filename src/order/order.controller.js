@@ -17,7 +17,6 @@ const createOrder = async (req, res) => {
       totalPrice,
       paymentMethod,
       products,
-      productCode,
       deliveryMethod,
       deliveryStatus,
       paymentStatus,
@@ -30,8 +29,8 @@ const createOrder = async (req, res) => {
   !address?.trim() ||
   !district?.trim() ||
   !zipCode?.trim() ||
-  !phone?.trim()||
-  ! productCode
+  !phone?.trim()
+ 
 ) {
   return res.status(400).json({ message: "All fields are required." });
 }

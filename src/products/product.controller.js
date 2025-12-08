@@ -65,7 +65,7 @@ const createNewProduct = async (req, res) => {
 const getAllProducts = async (req, res) => {
     try {
         // 1. **CRITICAL FIX: Get all parameters**
-        const { category, color,size, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
+        const { category, color,size, styleCategory , minPrice, maxPrice, page = 1, limit = 10 } = req.query;
         
         // **CRITICAL FIX: Determine the actual search term from the request**
         // This handles both req.query.search (from one RTK Query hook) 
@@ -100,8 +100,6 @@ if (searchTerm) {
         ]
     });
 }
-
-
 
         // 2. Category Condition
         if (category && category !== 'all') {
@@ -139,6 +137,17 @@ if (searchTerm) {
             if (minPrice) priceCondition.$gte = Number(minPrice);
             if (maxPrice) priceCondition.$lte = Number(maxPrice);
             conditions.push({ price: priceCondition });
+        }
+          // style category
+          if (styleCategory) {
+            let list = Array.isArray(styleCategory)
+                ? styleCategory
+                : styleCategory.split(",");
+
+            // Don't override existing style filter
+            conditions.push({
+                style: { $in: list.map(s => new RegExp(s, "i")) }
+            });
         }
 
         // --- Combine Conditions ---
@@ -296,9 +305,8 @@ const getAllFilters = async (req, res) => {
 
     const query = {};
     if (categoryParam && categoryParam.toLowerCase() !== "all") {
-      // query.category = { $regex: new RegExp(categoryParam, "i") };
       query.category = { $regex: new RegExp(`^${categoryParam}$`, "i") };
-          //  query.category = { $regex: new RegExp(category, "i") };
+        
     }
 
     // Fetch all relevant product fields
@@ -308,7 +316,7 @@ const getAllFilters = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "No products found for this category",
-        data: { categories: [], sizes: [], colors: [], styles: [], priceRanges: [] },
+        data: { categories: [], sizes: [], colors: [], styles: [], priceRanges: [],styleCategories: [] },
       });
     }
 
@@ -360,24 +368,71 @@ for (const [key, value] of Object.entries(categorySizeMap)) {
     break;
   }
 }
-
-
-
     // ✅ Styles
     const styles = [...new Set(products.map(p => p.style?.toLowerCase()).filter(Boolean))];
 
     // ✅ Price ranges
-    const priceRanges = [
-      { label: "Under 50", min: 0, max: 50 },
-      { label: "50 - 100", min: 50, max: 100 },
-      { label: "100 - 200", min: 100, max: 200 },
-      { label: "200 and above", min: 200, max: null },
-    ];
+    // const priceRanges = [
+    //   { label: "Under 50", min: 0, max: 50 },
+    //   { label: "50 - 100", min: 50, max: 100 },
+    //   { label: "100 - 200", min: 100, max: 200 },
+    //   { label: "200 and above", min: 200, max: null },
+    // ];
+
+     // 🟢 Dynamic Price Range Generator
+   const productPrices = products
+      .map((p) => p.price)
+      .filter((price) => typeof price === "number" && price > 0);
+
+    const maxPrice = Math.max(...productPrices);
+
+    let step;
+    if (maxPrice <= 500) step = 100;
+    else if (maxPrice <= 1000) step = 200;
+    else if (maxPrice <= 2000) step = 300;
+    else if (maxPrice <= 5000) step = 500;
+    else step = 1000;
+
+    const priceRanges = [];
+
+    for (let i = 0; i < maxPrice; i += step) {
+      priceRanges.push({
+        label: `${i} - ${i + step}`,
+        min: i,
+        max: i + step,
+      });
+    }
+
+    priceRanges.push({
+      label: `${maxPrice}+`,
+      min: maxPrice,
+      max: null,
+    });
+
+    // style category//
+    const styleCategoryMap = {
+  "panjabi": ["simple", "casual","embroidered","gorgeous", "wedding"],
+  "kids-panjabi": ["simple","gorgeous", "embroidered", "party"],
+  "big-size": ["simple","gorgeous", "embroidered"],
+  "sheroany": ["gorgeous", "simple", "royal", "wedding"],
+};
+
+let styleCategories = [];
+
+for (const [key, list] of Object.entries(styleCategoryMap)) {
+  if (normalizedCategory?.includes(key)) {
+    styleCategories = list;
+    break;
+  }
+}
+
+
+
 
     res.status(200).json({
       success: true,
       message: "Filters fetched successfully",
-      data: { categories, sizes, colors, styles, priceRanges },
+      data: { categories, sizes, colors, styles, priceRanges,  styleCategories,  },
     });
   } catch (err) {
     console.error("getAllFilters error:", err);
@@ -393,6 +448,7 @@ const getAllFilterProducts = async (req, res) => {
       color,
       size,
       style,
+      styleCategory,
       priceMin,
       priceMax,
       page = 1,
@@ -417,9 +473,20 @@ if (category && category.toLowerCase() !== "all") {
         // Use the syntax that WORKS in getAllFilters:
         query.category = { $regex: new RegExp("^" + normalizedCategory + "$", "i") };
         
-        // If this still fails, use the string concatenation:
-        // query.category = { $regex: new RegExp("^" + normalizedCategory + "$", "i") };
     }
+  
+
+    // STYLE CATEGORY (does NOT override style)
+    if (styleCategory) {
+  const list = Array.isArray(styleCategory)
+    ? styleCategory
+    : styleCategory.split(",");
+
+    const normalized = list.map(item => String(item).trim());
+
+   query.styleCategory = { $in: normalized.map(s => new RegExp(s, "i")) };
+}
+
 console.log("Query received:", req.query);
 console.log("Mongo query:", JSON.stringify(query, null, 2));
 
@@ -434,6 +501,8 @@ console.log("Mongo query:", JSON.stringify(query, null, 2));
       const styles = Array.isArray(style) ? style : [style];
       query.style = { $in: styles.map((s) => new RegExp(s, "i")) };
     }
+ 
+
 
     // SIZE (robust parsing + safe composition)
 // if (size) {
@@ -444,21 +513,6 @@ console.log("Mongo query:", JSON.stringify(query, null, 2));
 //   }));
 // }
 
-// if (size) {
-//   const sizes = typeof size === "string" ? size.split(",") : size;
-  
-//   query.$or = sizes.map((s) => ({
-//     [`stock.${s}`]: { $exists: true, $gt: 0 }, // ✅ Ensure this uses backticks ` and proper bracket notation []
-//   }));
-// }
-
-// if (size) {
-//   const sizes = typeof size === "string" ? size.split(",") : size;
-  
-//   query.$or = sizes.map((s) => ({
-//     [`stock.${s}`]: { $exists: true, $gt: 0 }, // Checking stock.46 > 0
-//   }));
-// }
 
   if (size) {
   const selectedSizes = typeof size === "string" ? [size] : size;
@@ -467,16 +521,6 @@ console.log("Mongo query:", JSON.stringify(query, null, 2));
     [`stock.${s}`]: { $exists: true, $gt: 0 }
   }));
 }
-
-
-
-
-console.log("Query received:", req.query);
-console.log("Mongo query:", query);
-console.log("Query received:", req.query);
-console.log("Mongo query:", JSON.stringify(query, null, 2));
-
-
 
     // PRICE
     if (priceMin || priceMax) {
@@ -511,57 +555,7 @@ console.log("Mongo query:", JSON.stringify(query, null, 2));
   }
 };
 
-// only for size selection in shop page //
-// const getAvailableSizes = async (req, res) => {
-//   try {
-//     const products = await Products.find({});
 
-//     // Extract sizes
-//     const sizesSet = new Set();
-
-//     products.forEach((p) => {
-//       let stockObj = p.stock;
-
-//       if (stockObj instanceof Map) {
-//         stockObj = Object.fromEntries(stockObj);
-//       } else if (typeof stockObj?.toObject === "function") {
-//         stockObj = stockObj.toObject();
-//       }
-
-//       if (stockObj && typeof stockObj === "object") {
-//         Object.keys(stockObj).forEach((size) => sizesSet.add(size));
-//       }
-//     });
-
-//     let sizes = [...sizesSet];
-
-//     const categoryParam = req.query.category || "";
-//     const normalizedCategory = categoryParam
-//       .toLowerCase()
-//       .replace(/\s+/g, "-")
-//       .trim();
-
-//     const categorySizeMap = {
-//       "kids-panjabi": [20, 22, 24, 26, 28, 30, 32, 34, 36],
-//       panjabi: [38, 40, 42, 44, 46],
-//       "big-size": [46, 48, 50],
-//       "womens-kurti": ["S", "M", "L", "XL", "XXL"],
-//     };
-
-//     for (const [key, value] of Object.entries(categorySizeMap)) {
-//       if (normalizedCategory.includes(key)) {
-//         sizes = value;
-//         break;
-//       }
-//     }
-
-//     res.json({
-//       sizes,
-//     });
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// };
 
  
 module.exports = {
