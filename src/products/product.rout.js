@@ -1,5 +1,5 @@
 const express =  require('express');
-const { createNewProduct, getAllProducts, getSingelProducts, updateProductById,  deleteProductById, reduceStock, trendingProducts, getAllFilters,  getAllFilterProducts } = require('./product.controller');
+const { createNewProduct, getAllProducts, getSingelProducts, updateProductById,  deleteProductById, reduceStock, trendingProducts, getAllFilters,  getAllFilterProducts} = require('./product.controller');
 const verifyToken = require('../middlewere/verifytoken');
 const verifyAdmin = require('../middlewere/verifyadmin');
 
@@ -11,6 +11,7 @@ const router= express.Router();
 // ✅ Filtering route (must be before "/:id")
 router.get("/filters/:category?", getAllFilters);
 router.get("/filter", getAllFilterProducts);
+
 
 // ✅ Product search & all products
 router.get("/search", getAllProducts);

@@ -302,12 +302,20 @@ const trendingProducts = async (req, res) => {
 const getAllFilters = async (req, res) => {
   try {
     const categoryParam = req.params.category;
+    const { priceMin, priceMax } = req.query;
 
     const query = {};
+
     if (categoryParam && categoryParam.toLowerCase() !== "all") {
-      query.category = { $regex: new RegExp(`^${categoryParam}$`, "i") };
-        
+      query.category = { $regex: new RegExp(`^${categoryParam}$`, "i") };   
     }
+       // Price filter
+   if (priceMin || priceMax) {
+  query.price = {};
+
+  if (priceMin) query.price.$gte = Number(priceMin);
+  if (priceMax) query.price.$lte = Number(priceMax);
+}
 
     // Fetch all relevant product fields
     const products = await Products.find(query, "category color price stock style");
@@ -380,34 +388,37 @@ for (const [key, value] of Object.entries(categorySizeMap)) {
     // ];
 
      // 🟢 Dynamic Price Range Generator
-   const productPrices = products
-      .map((p) => p.price)
-      .filter((price) => typeof price === "number" && price > 0);
+  
+// Dynamic Price Range Generator
+const productPrices = products
+  .map((p) => p.price)
+  .filter((price) => typeof price === "number" && price > 0);
 
-    const maxPrice = Math.max(...productPrices);
+// rename to avoid conflict
+const calculatedMaxPrice = Math.max(...productPrices);
 
-    let step;
-    if (maxPrice <= 500) step = 100;
-    else if (maxPrice <= 1000) step = 200;
-    else if (maxPrice <= 2000) step = 300;
-    else if (maxPrice <= 5000) step = 500;
-    else step = 1000;
+let step;
+if (calculatedMaxPrice <= 500) step = 100;
+else if (calculatedMaxPrice <= 1000) step = 200;
+else if (calculatedMaxPrice <= 2000) step = 300;
+else if (calculatedMaxPrice <= 5000) step = 500;
+else step = 1000;
 
-    const priceRanges = [];
+const priceRanges = [];
 
-    for (let i = 0; i < maxPrice; i += step) {
-      priceRanges.push({
-        label: `${i} - ${i + step}`,
-        min: i,
-        max: i + step,
-      });
-    }
+for (let i = 0; i < calculatedMaxPrice; i += step) {
+  priceRanges.push({
+    label: `${i} - ${i + step}`,
+    min: i,
+    max: i + step,
+  });
+}
 
-    priceRanges.push({
-      label: `${maxPrice}+`,
-      min: maxPrice,
-      max: null,
-    });
+priceRanges.push({
+  label: `${calculatedMaxPrice}+`,
+  min: calculatedMaxPrice,
+  max: null,
+});
 
     // style category//
     const styleCategoryMap = {
@@ -425,9 +436,6 @@ for (const [key, list] of Object.entries(styleCategoryMap)) {
     break;
   }
 }
-
-
-
 
     res.status(200).json({
       success: true,
@@ -462,11 +470,6 @@ const getAllFilterProducts = async (req, res) => {
     //   query.category = { $regex: new RegExp(`^${category}$`, "i") };
     // }
 
-// SAFE ALTERNATIVE (If the above still fails)
-// if (category && category.toLowerCase() !== "all") {
-//     const normalizedCategory = category.toLowerCase().trim();
-//     query.category = { $regex: new RegExp("^" + normalizedCategory + "$", "i") };
-// }
 
 if (category && category.toLowerCase() !== "all") {
         const normalizedCategory = category.toLowerCase().trim();
@@ -475,17 +478,12 @@ if (category && category.toLowerCase() !== "all") {
         
     }
   
-
-    // STYLE CATEGORY (does NOT override style)
-    if (styleCategory) {
-  const list = Array.isArray(styleCategory)
-    ? styleCategory
-    : styleCategory.split(",");
-
-    const normalized = list.map(item => String(item).trim());
-
-   query.styleCategory = { $in: normalized.map(s => new RegExp(s, "i")) };
+  // STYLE CATEGORY (does NOT override style)
+if (styleCategory) {
+  const styles = styleCategory.split(",").map(s => new RegExp(`^${s}$`, "i"));
+  query.styleCategory = { $in: styles };
 }
+
 
 console.log("Query received:", req.query);
 console.log("Mongo query:", JSON.stringify(query, null, 2));
@@ -514,20 +512,31 @@ console.log("Mongo query:", JSON.stringify(query, null, 2));
 // }
 
 
-  if (size) {
-  const selectedSizes = typeof size === "string" ? [size] : size;
+//   if (size) {
+//   const selectedSizes = typeof size === "string" ? [size] : size;
 
-  query.$or = selectedSizes.map((s) => ({
-    [`stock.${s}`]: { $exists: true, $gt: 0 }
-  }));
+//   query.$or = selectedSizes.map((s) => ({
+//     [`stock.${s}`]: { $exists: true, $gt: 0 }
+//   }));
+// }
+if (size) {
+  let selectedSizes = typeof size === "string" ? size.split(",") : size;
+  selectedSizes = selectedSizes.map(s => s.trim());
+
+  if (selectedSizes.length) {
+    query.$or = selectedSizes.map((s) => ({
+      [`stock.${s}`]: { $exists: true, $gt: 0 }
+    }));
+  }
 }
 
     // PRICE
-    if (priceMin || priceMax) {
-      query.price = {};
-      if (priceMin) query.price.$gte = parseFloat(priceMin);
-      if (priceMax) query.price.$lte = parseFloat(priceMax);
-    }
+if (priceMin || priceMax) {
+  query.price = {};
+  if (priceMin !== undefined) query.price.$gte = parseFloat(priceMin);
+  if (priceMax !== undefined) query.price.$lte = parseFloat(priceMax);
+}
+      console.log("FINAL MONGO QUERY2:", query);
 
     // PAGINATION
     const skip = (page - 1) * limit;
@@ -557,6 +566,8 @@ console.log("Mongo query:", JSON.stringify(query, null, 2));
 
 
 
+
+
  
 module.exports = {
     createNewProduct,
@@ -568,9 +579,7 @@ module.exports = {
     trendingProducts,
     getAllFilters,
     getAllFilterProducts,
-   
-   
-  
+
  
 }
 
