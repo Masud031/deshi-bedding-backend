@@ -2,8 +2,12 @@ const express = require('express');
 const { userRegistration, userLoggedIn, userLogout, getAllUsers, deleteUser, updateUserRole, editUserProfile, googleLoggedIn } = require('../user/user.controller');
 const verifyToken = require('../middlewere/verifytoken');
 const verifyAdmin = require('../middlewere/verifyadmin');
+const multer = require('multer');
 
 const router = express.Router();
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 router.post('/register',userRegistration);
 
@@ -27,10 +31,13 @@ router.delete('/users/:id',deleteUser,verifyToken ,verifyAdmin);
 router.put('/users/:id',verifyToken ,verifyAdmin, updateUserRole);
 
 //edit user profile(by user)
-// edit user profile
-router.patch('/edit-profile/:id',verifyToken , editUserProfile)
 
-
+router.patch(
+  "/edit-profile/:id",
+  verifyToken,
+  upload.single("profileImage"), // 'profileImage' must match frontend key
+  editUserProfile
+);
 module.exports = router;
 
 

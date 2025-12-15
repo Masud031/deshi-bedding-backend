@@ -4,13 +4,21 @@ const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
 const jwt = require("jsonwebtoken");
 const { successResponse, errorResponse } = require("./responsHandler");
 const generateToken = require("../middlewere/generatetoken");
+
 const crypto = require('crypto');
-const getGravatarUrl = (email) => {
-  if (!email) return "https://i.ibb.co.com/TDFh2J1d/download-2.jpg";
-  const normalizedEmail = email.trim().toLowerCase();
-  const hash = crypto.createHash("md5").update(normalizedEmail).digest("hex");
-  return `https://www.gravatar.com/avatar/${hash}?s=200&d=identicon`;
+const UploadImage = require("../utilis/UploadImage");
+const getGravatarUrl = (identifier, size = 200) => {
+  if (!identifier) {
+    return "https://i.ibb.co.com/TDFh2J1d/download-2.jpg";
+  }
+
+  const value = identifier.toString().trim().toLowerCase();
+  const hash = crypto.createHash("md5").update(value).digest("hex");
+
+  return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=identicon`;
 };
+
+
 
 
 // User registration
@@ -49,6 +57,7 @@ const userRegistration = async (req, res) => {
         username,
         mobile,
         password,
+        profileImage: getGravatarUrl(mobile),
       });
     }
 
@@ -58,7 +67,8 @@ const userRegistration = async (req, res) => {
         username,
         email,
         password,
-        profileImage: profileImage || "https://i.ibb.co.com/TDFh2J1d/download-2.jpg",
+        
+        profileImage: profileImage ||"https://i.ibb.co.com/TDFh2J1d/download-2.jpg",
       });
     }
 
@@ -133,11 +143,12 @@ const userLoggedIn = async (req, res) => {
     // ✅ Auto-assign Google profile image for Gmail users without profileImage
 
   const isDefaultAvatar = (url) =>
-   !url ||
-  url.trim() === "" ||
-  url.includes("https://i.ibb.co.com/TDFh2J1d/download-2.jpg") ||
+  !url ||
+ url.trim() === "" ||
+ url.includes("https://i.ibb.co.com/TDFh2J1d/download-2.jpg") ||
 //   url === "https://lh3.googleusercontent.com/a-/AOh14Gmasudwebdeveloper03=s96-c" || // Old broken URL
   url.includes("https://googleusercontent.com/profile/picture/"); // Include the known bad URL
+
 
 // Variable to track if a save operation is necessary
 let shouldSave = false;
@@ -327,33 +338,39 @@ const updateUserRole = async (req, res) => {
 
 // Edit user profile
 const editUserProfile = async (req, res) => {
-  const { id } = req.params;
-  const { username, profileImage, bio, profession } = req.body;
-
   try {
-    const updateFields = { username, profileImage, bio, profession };
+    const { id } = req.params;
+    const { username, bio } = req.body;
+
+    const updateFields = { username, bio };
+
+    if (req.file) {
+      const imageUrl = await UploadImage(req.file.buffer);
+      updateFields.profileImage = imageUrl;
+    }
+
     const updatedUser = await User.findByIdAndUpdate(id, updateFields, {
       new: true,
       runValidators: true,
     });
 
     if (!updatedUser) {
-      return errorResponse(res, 404, "User not found!");
+      return res.status(404).json({ message: "User not found" });
     }
 
-    return successResponse(res, 200, "User profile updated successfully!", {
-      _id: updatedUser._id,
-      username: updatedUser.username,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      profileImage: updatedUser.profileImage,
-      bio: updatedUser.bio,
-      profession: updatedUser.profession,
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: updatedUser,
     });
   } catch (error) {
-    errorResponse(res, 500, "Failed to update user profile!", error);
+    console.error("EDIT PROFILE ERROR:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
+ 
+
+
 
 
 

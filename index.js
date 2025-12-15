@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const router = express.Router();
 const mongoose = require('mongoose');
 
 
@@ -27,9 +26,6 @@ const ProductsRoutes = require('./src/products/product.rout');
 const ReviewsRoutes = require('./src/reviews/reviews.rout'); 
 const OrdersRoutes = require('./src/order/orders.rout');
 const StatsRoutes = require('./src/states/stats.route');
-const UploadImage = require("./src/utilis/UploadImage"); 
-
-
 
 
 async function main() {
@@ -46,8 +42,6 @@ async function main() {
     app.use('/api/order', OrdersRoutes);
     app.use('/api/stats', StatsRoutes);
     
-  
-
 
     app.get('/', (req, res) => {
       res.send('Lebaba E-commerce Server is running!');
@@ -60,16 +54,7 @@ async function main() {
     });
 
     // Upload image API
-    app.post('/uploadImage', (req, res) => {
-      UploadImage(req.body.image)
-        .then((url) => res.send(url))
-        .catch((error) => {
-          console.error("Error in Cloudinary upload:", error.message);
-          res.status(500).json({ error: "Image upload failed" });
-        });
-    });
-
-    
+ 
     // Start server AFTER database connection
     app.listen(port, () => {
       console.log(`Server is running on port ${port}`);
