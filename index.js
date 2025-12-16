@@ -1,69 +1,94 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const mongoose = require('mongoose');
-
-
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const mongoose = require("mongoose");
 
 const app = express();
-const port = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors({
-  origin: ['http://localhost:5173'],
-  credentials: true,
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+/* ======================
+   ENV CONFIG
+====================== */
+const PORT = process.env.PORT || 5000;
+const NODE_ENV = process.env.NODE_ENV || "development";
+
+/* ======================
+   SECURITY & MIDDLEWARE
+====================== */
+app.disable("x-powered-by"); // hide Express info
+
+app.use(
+  cors({
+    origin:
+      NODE_ENV === "production"
+        ? process.env.CLIENT_URL
+        : "http://localhost:5173",
+    credentials: true,
+  })
+);
+
+app.use(express.json({ limit: "2mb" })); // ⬅ global body limit
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 app.use(cookieParser());
 
-app.set('etag', false);
+app.set("etag", false);
 
-// Routes
-const UserRoutes = require('./src/user/user.routs');
-const ProductsRoutes = require('./src/products/product.rout');
-const ReviewsRoutes = require('./src/reviews/reviews.rout'); 
-const OrdersRoutes = require('./src/order/orders.rout');
-const StatsRoutes = require('./src/states/stats.route');
+/* ======================
+   ROUTES
+====================== */
+const UserRoutes = require("./src/user/user.routs");
+const ProductsRoutes = require("./src/products/product.rout");
+const ReviewsRoutes = require("./src/reviews/reviews.rout");
+const OrdersRoutes = require("./src/order/orders.rout");
+const StatsRoutes = require("./src/states/stats.route");
 
+app.use("/api/auth", UserRoutes);
+app.use("/api/products", ProductsRoutes);
+app.use("/api/reviews", ReviewsRoutes);
+app.use("/api/order", OrdersRoutes);
+app.use("/api/stats", StatsRoutes);
 
-async function main() {
+/* ======================
+   HEALTH CHECK
+====================== */
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Lebaba E-commerce Server is running",
+    env: NODE_ENV,
+  });
+});
+
+/* ======================
+   GLOBAL ERROR HANDLER
+====================== */
+app.use((err, req, res, next) => {
+  console.error("❌ Error:", err);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message:
+      NODE_ENV === "production"
+        ? "Something went wrong!"
+        : err.message,
+  });
+});
+
+/* ======================
+   DB + SERVER START
+====================== */
+async function startServer() {
   try {
-    // Connect to MongoDB before setting up routes
     await mongoose.connect(process.env.DB_URL);
-    // mongoose.connect(process.env.DB_URL, { useNewUrlParser: true, useUnifiedTopology: true });
-    console.log("MongoDB connected successfully!");
+    console.log("✅ MongoDB connected");
 
-    // Define routes AFTER database connection
-    app.use('/api/auth', UserRoutes);
-    app.use('/api/products', ProductsRoutes);
-    app.use('/api/reviews', ReviewsRoutes);
-    app.use('/api/order', OrdersRoutes);
-    app.use('/api/stats', StatsRoutes);
-    
-
-    app.get('/', (req, res) => {
-      res.send('Lebaba E-commerce Server is running!');
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
     });
-
-    app.post('/user', (req, res) => {
-      const userData = req.body;
-      console.log('User data received:', userData);
-      res.status(200).send({ message: 'User saved successfully', user: userData });
-    });
-
-    // Upload image API
- 
-    // Start server AFTER database connection
-    app.listen(port, () => {
-      console.log(`Server is running on port ${port}`);
-    });
-
   } catch (error) {
-    console.error("Database connection failed:", error);
+    console.error("❌ Database connection failed:", error.message);
+    process.exit(1); // stop app if DB fails
   }
 }
 
-// Run the server
-main();
+startServer();
