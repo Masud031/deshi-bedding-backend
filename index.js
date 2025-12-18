@@ -54,7 +54,7 @@ app.use("/api/stats", StatsRoutes);
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
-    message: "Lebaba E-commerce Server is running",
+    message: "BDhabibi.com Server is running",
     env: NODE_ENV,
   });
 });
