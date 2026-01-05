@@ -64,6 +64,7 @@ const createNewProduct = async (req, res) => {
 // The single, comprehensive function for all fetching, filtering, and searching
 const getAllProducts = async (req, res) => {
   try {
+     const searchTerm = req.query.search || req.query.query;
     const {
       category,
       color,
@@ -73,9 +74,8 @@ const getAllProducts = async (req, res) => {
       priceMax,
       page = 1,
       limit = 24,
+      search
     } = req.query;
-
-    const searchTerm = req.query.search;
 
     const conditions = [];
 
@@ -83,17 +83,17 @@ const getAllProducts = async (req, res) => {
     // SEARCH
     // ------------------------------
     if (searchTerm) {
-      const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(escaped, "i");
+     const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+     
+      const searchRegex = { $regex: escaped, $options: "i" };
 
       conditions.push({
         $or: [
-          { name: regex },
-          { category: regex },
-          { description: regex },
-          { color: regex },
-          { productCode: regex },
-          { orderId: regex },
+          { name: searchRegex },
+          { category: searchRegex },
+          { description: searchRegex },
+          { color: searchRegex },
+          { productCode: searchRegex }
         ],
       });
     }

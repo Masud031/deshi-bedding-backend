@@ -41,6 +41,7 @@ const ProductsRoutes = require("./src/products/product.rout");
 const ReviewsRoutes = require("./src/reviews/reviews.rout");
 const OrdersRoutes = require("./src/order/orders.rout");
 const StatsRoutes = require("./src/states/stats.route");
+const UploadImage = require("./src/utilis/UploadImage");
 
 app.use("/api/auth", UserRoutes);
 app.use("/api/products", ProductsRoutes);
@@ -57,6 +58,17 @@ app.get("/", (req, res) => {
     message: "BDhabibi.com Server is running",
     env: NODE_ENV,
   });
+});
+
+// Upload Image//
+
+  app.post('/api/uploadImage', (req, res) => {
+    UploadImage(req.body.image)
+        .then((url) => res.send(url))
+        .catch((error) => {
+            console.error("❌ Error in Cloudinary upload:", error.message);
+            res.status(500).json({ error: "Image upload failed" });
+        });
 });
 
 /* ======================

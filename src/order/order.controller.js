@@ -84,10 +84,17 @@ const createOrder = async (req, res) => {
       paymentStatus: paymentStatus || "pending",
       totalPrice,
       paymentMethod,
-      userId,
+     userId: userId || null,
       products: formattedProducts,
       transactionId: crypto.randomUUID(), // keep only one
     });
+    // ADDITION: Link to user if they exist but forgot to log in
+if (!userId) {
+  const existingUser = await User.findOne({ phone: phone }); // Adjust 'phone' to match your User Schema field
+  if (existingUser) {
+    newOrder.userId = existingUser._id;
+  }
+}
 
     // ✅ Save
     const savedOrder = await newOrder.save();
@@ -270,7 +277,19 @@ const deleteOrderById = async (req, res) => {
 const getOrdersByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
-    const orders = await Order.find({ userId }).sort({ createdAt: -1 });
+    // 1. Get the user's details to find their mobile number
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    // 2. Search by userId OR by the phone number associated with the account
+    const orders = await Order.find({
+      $or: [
+        { userId: userId },
+        { phone: user.mobile } // Ensure 'phone' is the key in your Order schema
+      ]
+    }).sort({ createdAt: -1 });
+    // const orders = await Order.find({ userId }).sort({ createdAt: -1 });
 
     // if (!orders || orders.length === 0) {
     //   return res.status(404).json({ success: false, message: "No orders found for this user." });

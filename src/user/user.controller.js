@@ -73,6 +73,15 @@ const userRegistration = async (req, res) => {
     }
 
      await user.save();
+     // ✅ AUTO-LINK PREVIOUS GUEST ORDERS
+    // This finds all orders where the 'phone' matches the new user's 'mobile'
+    // and the 'userId' is currently null or missing.
+    if (user.mobile) {
+      await Order.updateMany(
+        { phone: user.mobile, userId: { $exists: false } }, 
+        { $set: { userId: user._id } }
+      );
+    }
 
       // ✅ Generate JWT token right after registration
     // ✅ Generate JWT
