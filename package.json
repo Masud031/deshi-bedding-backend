@@ -20,7 +20,11 @@
     "cloudinary": "^2.5.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+<<<<<<< HEAD
     "dotenv": "^16.6.1",
+=======
+    "dotenv": "^16.4.7",
+>>>>>>> 237ed83c4a02dbd63e6b822971dac475e664069f
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.4",

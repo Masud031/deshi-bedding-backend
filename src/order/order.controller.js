@@ -1,9 +1,8 @@
 const mongoose = require("mongoose");
 const crypto = require("crypto");
-// const Order = require("./order.model");
+const Order = require("./order.model");
 const User = require("../user/user.model");
 const { errorResponse, successResponse } = require("../user/responsHandler");
-const Order = require("./order.model");
 
 const createOrder = async (req, res) => {
   console.log("Request body:", req.body);

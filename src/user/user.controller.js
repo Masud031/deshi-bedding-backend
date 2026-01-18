@@ -8,7 +8,6 @@ const generateToken = require("../middlewere/generatetoken");
 const crypto = require('crypto');
 const UploadImage = require("../utilis/UploadImage");
 const Order = require("../order/order.model");
- console.log("✅ Order model loaded:", typeof Order);
 const getGravatarUrl = (identifier, size = 200) => {
   if (!identifier) {
     return "https://i.ibb.co.com/TDFh2J1d/download-2.jpg";
@@ -84,8 +83,6 @@ const userRegistration = async (req, res) => {
         { $set: { userId: user._id } }
       );
     }
-   
-
 
       // ✅ Generate JWT token right after registration
     // ✅ Generate JWT
