@@ -3,7 +3,6 @@ const { errorResponse, successResponse } = require("../user/responsHandler");
 const Reviews = require("./reviews.model");
 
 const postAReview = async (req, res) => {
-<<<<<<< HEAD
   try {
     const { comment, rating,  productId } = req.body;
     const userId = req.userId;
@@ -11,10 +10,6 @@ const postAReview = async (req, res) => {
     if (!productId || !userId) {
        return errorResponse(res, 400, "Product ID or User ID is missing");
     }
-=======
-    try {
-        const { comment, rating, userId, productId } = req.body;
->>>>>>> 237ed83c4a02dbd63e6b822971dac475e664069f
 
         if (!comment || rating === undefined || !productId || !userId) {
             return errorResponse(res, 400, "Missing required fields");
