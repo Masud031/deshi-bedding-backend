@@ -567,8 +567,8 @@ if (styleCategory) {
 }
 
 
-console.log("Query received:", req.query);
-console.log("Mongo query:", JSON.stringify(query, null, 2));
+// console.log("Query received:", req.query);
+// console.log("Mongo query:", JSON.stringify(query, null, 2));
 
     // COLOR (supports array or single)
     if (color) {
@@ -599,7 +599,7 @@ if (priceMin || priceMax) {
   if (priceMin !== undefined) query.price.$gte = parseFloat(priceMin);
   if (priceMax !== undefined) query.price.$lte = parseFloat(priceMax);
 }
-      console.log("FINAL MONGO QUERY2:", query);
+      // console.log("FINAL MONGO QUERY2:", query);
 
     // PAGINATION
     const skip = (page - 1) * limit;
