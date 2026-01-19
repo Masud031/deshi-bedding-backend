@@ -20,10 +20,11 @@ app.disable("x-powered-by"); // hide Express info
 
 app.use(
   cors({
-    origin:
-      NODE_ENV === "production"
-        ? process.env.CLIENT_URL
-        : "http://localhost:5173",
+    origin: [
+      "https://bdhabibi.com",
+      "https://www.bdhabibi.com",
+      "http://localhost:5173"
+    ],
     credentials: true,
   })
 );

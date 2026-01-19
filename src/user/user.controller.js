@@ -382,10 +382,6 @@ const editUserProfile = async (req, res) => {
 };
  
 
-
-
-
-
 module.exports = {
   userRegistration,
   userLoggedIn,
