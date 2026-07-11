@@ -1,9 +1,0 @@
-user models[
-    username,
-    email,
-    password,
-    profileImage,
-    bio,
-    proffessions,
-    roles,
-]

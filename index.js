@@ -1,124 +1,92 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const cookieParser = require("cookie-parser");
-const mongoose = require("mongoose");
-const path = require("path");
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const mongoose = require('mongoose');
+
+
 
 const app = express();
+const port = process.env.PORT || 5000;
 
-/* ======================
-   ENV CONFIG
-====================== */
-const PORT = process.env.PORT || 5000;
-const NODE_ENV = process.env.NODE_ENV || "development";
-
-/* ======================
-   SECURITY & MIDDLEWARE
-====================== */
-app.disable("x-powered-by"); // hide Express info
-
-app.use(
-  cors({
-    origin: [
-      "https://bdhabibi.com",
-      "https://www.bdhabibi.com",
-      "http://localhost:5173"
-    ],
-    credentials: true,
-  })
-);
-
-app.use(express.json({ limit: "5mb" })); // ⬅ global body limit
-app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+// Middleware
+app.use(cors({
+  origin: ['http://localhost:8080'],
+  credentials: true,
+}));
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({
+  extended: true,
+  limit: "20mb",
+}));
 app.use(cookieParser());
 
-app.set("etag", false);
+app.set('etag', false);
 
-/* ======================
-   ROUTES
-====================== */
-const UserRoutes = require("./src/user/user.routs");
-const ProductsRoutes = require("./src/products/product.rout");
-const ReviewsRoutes = require("./src/reviews/reviews.rout");
-const OrdersRoutes = require("./src/order/orders.rout");
-const StatsRoutes = require("./src/states/stats.route");
+// Routes
+const UserRoutes = require('./src/user/user.routs');
+const ProductsRoutes = require('./src/products/product.rout');
+const ReviewsRoutes = require('./src/reviews/reviews.rout'); 
+const OrdersRoutes = require('./src/order/orders.rout');
+const StatsRoutes = require('./src/states/stats.route');
 const UploadImage = require("./src/utilis/UploadImage");
 
-app.use("/api/auth", UserRoutes);
-app.use("/api/products", ProductsRoutes);
-app.use("/api/reviews", ReviewsRoutes);
-app.use("/api/order", OrdersRoutes);
-app.use("/api/stats", StatsRoutes);
 
-/* ======================
-   HEALTH CHECK
-====================== */
-app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "BDhabibi.com Server is running",
-    env: NODE_ENV,
-  });
-});
-
-//site map for indexing//
-app.get('/sitemap.xml', (req, res) => {
-    const sitemapPath = '/var/www/backend/sitemap.xml';
-    console.log("Attempting to serve sitemap from:", sitemapPath);
-    
-    res.sendFile(sitemapPath, (err) => {
-        if (err) {
-            console.error("Sitemap error:", err);
-            res.status(404).send("File not found on disk");
-        }
-    });
-});
-
-// Upload Image//
-
-  app.post('/api/uploadImage', (req, res) => {
-    UploadImage(req.body.image)
-        .then((url) => res.send(url))
-        .catch((error) => {
-            console.error("❌ Error in Cloudinary upload:", error.message);
-            res.status(500).json({ error: "Image upload failed" });
-        });
-});
-
-/* ======================
-   GLOBAL ERROR HANDLER
-====================== */
-app.use((err, req, res, next) => {
-  console.error("❌ Error:", err);
-
-  res.status(err.status || 500).json({
-    success: false,
-    message:
-      NODE_ENV === "production"
-        ? "Something went wrong!"
-        : err.message,
-  });
-});
-
-/* ======================
-   DB + SERVER START
-====================== */
-async function startServer() {
+async function main() {
   try {
+    // Connect to MongoDB before setting up routes
     await mongoose.connect(process.env.DB_URL);
-    console.log("✅ MongoDB connected");
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+    // mongoose.connect(process.env.DB_URL, { useNewUrlParser: true, useUnifiedTopology: true });
+    console.log("MongoDB connected successfully!");
+
+    // Define routes AFTER database connection
+    app.use('/api/auth', UserRoutes);
+    app.use('/api/products', ProductsRoutes);
+    app.use('/api/reviews', ReviewsRoutes);
+    app.use('/api/order', OrdersRoutes);
+    app.use('/api/stats', StatsRoutes);
+    
+
+    app.get('/', (req, res) => {
+      res.send('Lebaba E-commerce Server is running!');
+    });
+
+    app.post('/user', (req, res) => {
+      const userData = req.body;
+      console.log('User data received:', userData);
+      res.status(200).send({ message: 'User saved successfully', user: userData });
+    });
+
+    // Upload image API
+app.post("/api/uploadImage", async (req, res) => {
+  try {
+    const url = await UploadImage(req.body.image);
+
+    return res.status(200).json({
+      success: true,
+      imageUrl: url,
+    });
   } catch (error) {
-    console.error("❌ Database connection failed:", error.message);
-    process.exit(1); // stop app if DB fails
+    console.error("❌ Error in Cloudinary upload:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Image upload failed",
+    });
+  }
+});
+ 
+    // Start server AFTER database connection
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
+
+  } catch (error) {
+    console.error("Database connection failed:", error);
   }
 }
 
-startServer();
-
-
-// // my name is masudur rahman//
-
+// Run the server
+main();

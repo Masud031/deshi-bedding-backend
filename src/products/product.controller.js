@@ -38,9 +38,17 @@ const createNewProduct = async (req, res) => {
       }
     }
 
+   if (!req.userId) {
+  return res.status(401).json({
+    success: false,
+    message: "Unauthorized",
+  });
+}
+
         const newProduct =  new Products({
             ...req.body,
               productCode,
+             author: req.userId,
         })
 
         const savedProduct =  await newProduct.save();

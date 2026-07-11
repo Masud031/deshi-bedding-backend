@@ -88,7 +88,7 @@ const userRegistration = async (req, res) => {
 
       // ✅ Generate JWT token right after registration
     // ✅ Generate JWT
-    const token = generateToken(user._id);
+  const token = await generateToken(user._id);
         // Optionally send token in cookie
     res.cookie("token", token, {
       httpOnly: true,
@@ -392,5 +392,4 @@ module.exports = {
   editUserProfile,
   googleLoggedIn,
   
- 
 };

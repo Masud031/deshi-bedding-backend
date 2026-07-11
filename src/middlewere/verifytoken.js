@@ -2,6 +2,7 @@ const { errorResponse } = require("../user/responsHandler");
 const jwt =  require('jsonwebtoken')
 const JWT_SECRET = process.env.JWT_SECRET_KEY;
 
+
 const verifyToken=(req, res, next)=>{
     try {
        // 1️⃣ Check cookie first
@@ -16,6 +17,7 @@ const verifyToken=(req, res, next)=>{
       return errorResponse(res, 401, "Unauthorized Access!");
     }
         const decoded = jwt.verify(token,  JWT_SECRET);
+        console.log("Decoded Token:", decoded);
         if(!decoded.userId) {
             return res.status(403).send({message: "Access denied!"})
         }
