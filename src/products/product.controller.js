@@ -223,7 +223,7 @@ let priceRanges = [];
             }
         } else {
             // GLOBAL fallback (category = all or not selected)
-            console.log("- Using GLOBAL PRICE ranges.");
+          
             priceRanges = [
                 { label: "0 - 1000", min: 0, max: 1000 },
                 { label: "1001 - 3000", min: 1001, max: 3000 },
